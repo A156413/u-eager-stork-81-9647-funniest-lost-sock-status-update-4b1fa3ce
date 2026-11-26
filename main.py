@@ -20,12 +20,19 @@ def main() -> None:
         f"status update is {len(STATUS)} chars, over the {MAX_CHARS} limit"
     )
     os.makedirs("/output", exist_ok=True)
-    # The grader collects outputs as another user: everything under
-    # /output must be world-readable.
-    os.chmod("/output", 0o755)
+    # The grader runs as uid 65534 on a root-owned /output: chmod on the
+    # directory itself raises EPERM there, so make every chmod best-effort
+    # and never let it fail the run (stats-site v1 died on this exact line).
+    try:
+        os.chmod("/output", 0o755)
+    except OSError:
+        pass
     with open("/output/entry.txt", "w", encoding="utf-8") as f:
         f.write(STATUS + "\n")
-    os.chmod("/output/entry.txt", 0o644)
+    try:
+        os.chmod("/output/entry.txt", 0o644)
+    except OSError:
+        pass
     with open("/output/entry.txt", encoding="utf-8") as f:
         assert f.read().strip() == STATUS, "entry.txt does not match STATUS"
     print(STATUS)
